@@ -228,12 +228,6 @@
     " remaining" : {
       "comment" : "remaining time in setting's profile expiration section",
       "localizations" : {
-        "ce" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "remaining"
-          }
-        },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
@@ -7243,12 +7237,6 @@
             "value" : "API Secret"
           }
         },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "एपीआई पास्वर्ड"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
@@ -10053,12 +10041,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בטל"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "निरस्त"
           }
         },
         "it" : {
@@ -13353,12 +13335,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Continue"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "जारी"
           }
         },
         "it" : {
@@ -19905,12 +19881,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Glucose"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "शुगर"
           }
         },
         "it" : {
@@ -26778,12 +26748,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שם"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "नाम"
           }
         },
         "it" : {

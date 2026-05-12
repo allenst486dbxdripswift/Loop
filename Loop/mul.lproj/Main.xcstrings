@@ -2806,12 +2806,6 @@
             "value" : "Glucose"
           }
         },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "शुगर"
-          }
-        },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
