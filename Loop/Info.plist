@@ -50,6 +50,7 @@
 		<string>dexcomg6</string>
 		<string>dexcomcgm</string>
 		<string>dexcomshare</string>
+		<string>csairopen</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
