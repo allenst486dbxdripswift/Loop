@@ -2,15 +2,57 @@ import Foundation
 import HealthKit
 import LoopKit
 import LoopKitUI
+import UIKit
 
-/// Loop용 CGM 플러그인. iOS Loop 코드베이스에 CareSens Air를 `CGMManager` 로 등록합니다.
-final class CareSensAirCGMPlugin: NSObject, CGMManager {
-    var delegate: CGMManagerDelegate?
-    var pumpManager: PumpManagerUI?
+/// Loop용 CGM 플러그인. iOS Loop 코드베이스에 CareSens Air를 `CGMManagerUI` 로 등록합니다.
+public final class CareSensAirCGMPlugin: NSObject, CGMManagerUI {
+    public var delegate: CGMManagerDelegate?
+    
+    public var cgmManagerDelegate: CGMManagerDelegate? {
+        get { return delegate }
+        set { delegate = newValue }
+    }
+    
+    public var delegateQueue: DispatchQueue! = .main
 
     private let peripheral = CareSensAirPeripheralManager()
 
-    func start() {
+    // MARK: - DeviceManager
+    public static let pluginIdentifier: String = "CareSensAirCGMPlugin"
+    public static let localizedTitle = "CareSens Air"
+    
+    public var pluginIdentifier: String { return Self.pluginIdentifier }
+    public var managerIdentifier: String { return Self.pluginIdentifier }
+    public var localizedTitle: String { return Self.localizedTitle }
+    public let isOnboarded = true
+    public var appURL: URL? { return nil }
+    public var device: HKDevice? { return nil }
+
+    // MARK: - CGMManager
+    public var cgmManagerStatus: CGMManagerStatus {
+        return CGMManagerStatus(hasValidSensorSession: true, device: device)
+    }
+    public var shouldSyncToRemoteService: Bool = true
+    public var providesBLEHeartbeat: Bool = false
+    public var managedDataInterval: TimeInterval? = nil
+
+    public var rawState: CGMManager.RawStateValue {
+        return [:]
+    }
+
+    public required init?(rawState: CGMManager.RawStateValue) {
+        super.init()
+    }
+
+    public override init() {
+        super.init()
+    }
+
+    public func fetchNewDataIfNeeded(_ completion: @escaping (CGMReadingResult) -> Void) {
+        completion(.noData)
+    }
+
+    public func start() {
         peripheral.startScanning()
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(handleGlucoseUpdate(_:)),
@@ -18,7 +60,7 @@ final class CareSensAirCGMPlugin: NSObject, CGMManager {
                                                object: nil)
     }
 
-    func stop() {
+    public func stop() {
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -37,37 +79,61 @@ final class CareSensAirCGMPlugin: NSObject, CGMManager {
         delegate?.cgmManager(self, hasNew: .newData([sample]))
     }
 
-    var deviceIdentifier: String? { return "CSAIR-001" }
-    var managerIdentifier: String { return "CareSensAirCGMPlugin" }
-    var shouldSyncToRemoteService: Bool { return true }
+    // MARK: - AlertResponder
+    public func acknowledgeAlert(alertIdentifier: Alert.AlertIdentifier, completion: @escaping (Error?) -> Void) {
+        completion(nil)
+    }
+
+    // MARK: - AlertSoundVendor
+    public func getSoundBaseURL() -> URL? { return nil }
+    public func getSounds() -> [Alert.Sound] { return [] }
+
+    // MARK: - CGMManagerUI
+    public var cgmStatusHighlight: DeviceStatusHighlight? { return nil }
+    public var cgmLifecycleProgress: DeviceLifecycleProgress? { return nil }
+    public var cgmStatusBadge: DeviceStatusBadge? { return nil }
     
-    // MARK: - CGMManager Protocol Requirements
-    var providesBLEHeartbeat: Bool { return false }
-    var managedDataInterval: TimeInterval? { return nil }
+    public static var onboardingImage: UIImage? { return nil }
+    public var smallImage: UIImage? { return nil }
 
-    var rawState: CGMManager.RawStateValue {
-        return [:]
+    public static func setupViewController(bluetoothProvider: BluetoothProvider, displayGlucosePreference: DisplayGlucosePreference, colorPalette: LoopUIColorPalette, allowDebugFeatures: Bool, prefersToSkipUserInteraction: Bool) -> SetupUIResult<CGMManagerViewController, CGMManagerUI> {
+        let manager = CareSensAirCGMPlugin()
+        return .createdAndOnboarded(manager)
     }
 
-    required init?(rawState: CGMManager.RawStateValue) {
-        super.init()
-    }
-
-    override init() {
-        super.init()
+    public func settingsViewController(bluetoothProvider: BluetoothProvider, displayGlucosePreference: DisplayGlucosePreference, colorPalette: LoopUIColorPalette, allowDebugFeatures: Bool) -> CGMManagerViewController {
+        return CareSensDummySettingsVC()
     }
 }
 
-// MARK: - CGMManagerUIPlugin conformance (minimal UI to appear in selection list)
-extension CareSensAirCGMPlugin: CGMManagerUIPlugin {
-    static var pluginIdentifier: String { return "CareSensAirCGMPlugin" }
-    static var localizedTitle: String { return "CareSens Air" }
-    static var deviceType: DeviceType { return .cgm }
-    static var onboardingMethods: [OnboardingMethod] { return [] }
+// MARK: - UIViewController for Settings
+public class CareSensDummySettingsVC: UIViewController, CGMManagerOnboarding, CompletionNotifying {
+    public weak var cgmManagerOnboardingDelegate: CGMManagerOnboardingDelegate?
+    public weak var completionDelegate: CompletionDelegate?
 
-    static func setupViewController(bluetoothProvider: BluetoothProvider?, displayGlucosePreference: DisplayGlucosePreference, colorPalette: LoopUIColorPalette, allowDebugFeatures: Bool, prefersToSkipUserInteraction: Bool) -> SetupUIResult {
-        // No UI needed – just create the manager instance directly.
-        let manager = CareSensAirCGMPlugin()
-        return .createdAndOnboarded(manager)
+    public override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .white
+        
+        let label = UILabel()
+        label.text = "CareSens Air Settings\n(No configurable settings)"
+        label.numberOfLines = 0
+        label.textAlignment = .center
+        label.frame = view.bounds
+        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(label)
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(done))
+    }
+    
+    @objc func done() {
+        completionDelegate?.completionNotifyingDidComplete(self)
+    }
+}
+
+// MARK: - CGMManagerUIPlugin
+public class CareSensAirCGMUIPlugin: NSObject, CGMManagerUIPlugin {
+    public var cgmManagerType: CGMManagerUI.Type? {
+        return CareSensAirCGMPlugin.self
     }
 }
