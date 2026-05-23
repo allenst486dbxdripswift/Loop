@@ -10,17 +10,19 @@ import LoopKitUI
 import MockKit
 
 let staticCGMManagersByIdentifier: [String: CGMManager.Type] = [
-    MockCGMManager.pluginIdentifier: MockCGMManager.self
+    MockCGMManager.pluginIdentifier: MockCGMManager.self,
+    CareSensAirCGMPlugin.pluginIdentifier: CareSensAirCGMPlugin.self,
 ]
 
 var availableStaticCGMManagers: [CGMManagerDescriptor] {
-    if FeatureFlags.allowSimulators {
-        return [
-            CGMManagerDescriptor(identifier: MockCGMManager.pluginIdentifier, localizedTitle: MockCGMManager.localizedTitle)
-        ]
-    } else {
-        return []
-    }
+        if FeatureFlags.allowSimulators {
+            return [
+                CGMManagerDescriptor(identifier: MockCGMManager.pluginIdentifier, localizedTitle: MockCGMManager.localizedTitle),
+                CGMManagerDescriptor(identifier: CareSensAirCGMPlugin.pluginIdentifier, localizedTitle: CareSensAirCGMPlugin.localizedTitle)
+            ]
+        } else {
+            return []
+        }
 }
 
 func CGMManagerFromRawValue(_ rawValue: [String: Any]) -> CGMManager? {
