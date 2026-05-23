@@ -1,4 +1,5 @@
 import Foundation
+import HealthKit
 import LoopKit
 import LoopKitUI
 
@@ -23,21 +24,38 @@ final class CareSensAirCGMPlugin: NSObject, CGMManager {
 
     @objc private func handleGlucoseUpdate(_ note: Notification) {
         guard let glucose = note.userInfo?["glucose"] as? Double else { return }
-        let sample = GlucoseSample(
-            uuid: UUID(),
-            quantity: Double(glucose),
-            startDate: Date(),
-            endDate: Date(),
+        let sample = NewGlucoseSample(
+            date: Date(),
+            quantity: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: glucose),
+            condition: nil,
+            trend: nil,
+            trendRate: nil,
             isDisplayOnly: false,
-            syncIdentifier: "\(Int(Date().timeIntervalSince1970))",
-            device: "CareSens Air"
+            wasUserEntered: false,
+            syncIdentifier: "\(Int(Date().timeIntervalSince1970))"
         )
-        delegate?.cgmManager(self, didUpdate: [sample])
+        delegate?.cgmManager(self, hasNew: .newData([sample]))
     }
 
     var deviceIdentifier: String? { return "CSAIR-001" }
     var managerIdentifier: String { return "CareSensAirCGMPlugin" }
     var shouldSyncToRemoteService: Bool { return true }
+    
+    // MARK: - CGMManager Protocol Requirements
+    var providesBLEHeartbeat: Bool { return false }
+    var managedDataInterval: TimeInterval? { return nil }
+
+    var rawState: CGMManager.RawStateValue {
+        return [:]
+    }
+
+    required init?(rawState: CGMManager.RawStateValue) {
+        super.init()
+    }
+
+    override init() {
+        super.init()
+    }
 }
 
 // MARK: - CGMManagerUIPlugin conformance (minimal UI to appear in selection list)
