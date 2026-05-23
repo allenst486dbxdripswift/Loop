@@ -39,3 +39,17 @@ final class CareSensAirCGMPlugin: NSObject, CGMManager {
     var managerIdentifier: String { return "CareSensAirCGMPlugin" }
     var shouldSyncToRemoteService: Bool { return true }
 }
+
+// MARK: - CGMManagerUIPlugin conformance (minimal UI to appear in selection list)
+extension CareSensAirCGMPlugin: CGMManagerUIPlugin {
+    static var pluginIdentifier: String { return "CareSensAirCGMPlugin" }
+    static var localizedTitle: String { return "CareSens Air" }
+    static var deviceType: DeviceType { return .cgm }
+    static var onboardingMethods: [OnboardingMethod] { return [] }
+
+    static func setupViewController(bluetoothProvider: BluetoothProvider?, displayGlucosePreference: DisplayGlucosePreference, colorPalette: LoopUIColorPalette, allowDebugFeatures: Bool, prefersToSkipUserInteraction: Bool) -> SetupUIResult {
+        // No UI needed – just create the manager instance directly.
+        let manager = CareSensAirCGMPlugin()
+        return .createdAndOnboarded(manager)
+    }
+}
