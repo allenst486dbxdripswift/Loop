@@ -36,6 +36,10 @@ public final class CareSensAirCGMPlugin: NSObject, CGMManagerUI {
     public var providesBLEHeartbeat: Bool = false
     public var managedDataInterval: TimeInterval? = nil
 
+    // MARK: - Missing requirements for CGMManager and DeviceManager
+    public var glucoseDisplay: GlucoseDisplayable? { return nil }
+    public var debugDescription: String { return "CareSensAirCGMPlugin" }
+
     public var rawState: CGMManager.RawStateValue {
         return [:]
     }
