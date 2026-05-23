@@ -38,7 +38,7 @@ public final class CareSensAirCGMPlugin: NSObject, CGMManagerUI {
 
     // MARK: - Missing requirements for CGMManager and DeviceManager
     public var glucoseDisplay: GlucoseDisplayable? { return nil }
-    public var debugDescription: String { return "CareSensAirCGMPlugin" }
+    public override var debugDescription: String { return "CareSensAirCGMPlugin" }
 
     public var rawState: CGMManager.RawStateValue {
         return [:]
