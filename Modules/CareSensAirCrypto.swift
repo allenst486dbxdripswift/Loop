@@ -23,7 +23,7 @@ struct CareSensAirCrypto {
                 keyData.withUnsafeBytes { $0.baseAddress },
                 keyData.count,
                 nil, 0, 0,
-                CCModeOptions(kCCModeOptionCTR_LE),
+                CCModeOptions(2), // kCCModeOptionCTR_LE is not exposed publicly, its value is 2
                 &cryptor)
 
             guard create == kCCSuccess, let ctx = cryptor else { return create }
