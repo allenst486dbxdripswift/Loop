@@ -2,43 +2,58 @@ import Foundation
 import CryptoKit
 import CommonCrypto
 
-/// AES‑256 CTR (no‑padding) decryption for CareSens Air CGM.
+/// AES‑128 CBC (PKCS7 Padding) encryption/decryption for CareSens Air CGM.
 struct CareSensAirCrypto {
     private static let keyString = "tq1Tg265o4UFD8tfPvNqUCiYyCxkhdZV"
-    private static let keyData = Data(keyString.utf8)
-    private static let iv = Data(repeating: 0, count: 16)   // placeholder nonce
+    
+    /// Generates 16-byte IV using the serial number.
+    /// Format: Suffix6 + Suffix6 + Suffix4.
+    static func generateIV(serialNumber: String) -> Data {
+        let suffix6 = String(serialNumber.suffix(6))
+        let suffix4 = String(serialNumber.suffix(4))
+        let ivString = suffix6 + suffix6 + suffix4
+        return Data(ivString.utf8)
+    }
 
-    static func decrypt(_ ciphertext: Data) -> Data? {
-        // Allocate output buffer the same size as ciphertext.
-        var out = Data(count: ciphertext.count)
-        let outCount = out.count
+    static func encrypt(_ plainData: Data, serialNumber: String) -> Data? {
+        return crypt(operation: CCOperation(kCCEncrypt), data: plainData, serialNumber: serialNumber)
+    }
+
+    static func decrypt(_ cipherData: Data, serialNumber: String) -> Data? {
+        return crypt(operation: CCOperation(kCCDecrypt), data: cipherData, serialNumber: serialNumber)
+    }
+
+    private static func crypt(operation: CCOperation, data: Data, serialNumber: String) -> Data? {
+        // Use first 16 bytes for AES-128
+        let keyBytes = Data(keyString.utf8).prefix(16)
+        let iv = generateIV(serialNumber: serialNumber)
+
+        var out = Data(count: data.count + kCCBlockSizeAES128)
         var outLen: size_t = 0
-        // Perform decryption using CommonCrypto CTR mode.
-        let status = out.withUnsafeMutableBytes { outPtr -> CCCryptorStatus in
-            var cryptor: CCCryptorRef?
-            let create = CCCryptorCreateWithMode(
-                CCOperation(kCCDecrypt),
-                CCMode(kCCModeCTR),
-                CCAlgorithm(kCCAlgorithmAES),
-                CCPadding(ccNoPadding),
-                iv.withUnsafeBytes { $0.baseAddress },
-                keyData.withUnsafeBytes { $0.baseAddress },
-                keyData.count,
-                nil, 0, 0,
-                CCModeOptions(2), // kCCModeOptionCTR_LE value
-                &cryptor)
-            guard create == kCCSuccess, let ctx = cryptor else { return create }
-            let upd = CCCryptorUpdate(ctx,
-                                      ciphertext.withUnsafeBytes { $0.baseAddress },
-                                      ciphertext.count,
-                                      outPtr.baseAddress,
-                                      outCount,
-                                      &outLen)
-            CCCryptorRelease(ctx)
-            return upd
+        
+        let status = out.withUnsafeMutableBytes { outPtr in
+            data.withUnsafeBytes { dataPtr in
+                keyBytes.withUnsafeBytes { keyPtr in
+                    iv.withUnsafeBytes { ivPtr in
+                        CCCrypt(
+                            operation,
+                            CCAlgorithm(kCCAlgorithmAES),
+                            CCOptions(kCCOptionPKCS7Padding),
+                            keyPtr.baseAddress,
+                            keyBytes.count,
+                            ivPtr.baseAddress,
+                            dataPtr.baseAddress,
+                            data.count,
+                            outPtr.baseAddress,
+                            out.count,
+                            &outLen
+                        )
+                    }
+                }
+            }
         }
+        
         guard status == kCCSuccess else { return nil }
-        // Return only the bytes that were actually written.
-        return Data(out.prefix(Int(outLen)))
+        return Data(out.prefix(outLen))
     }
 }
