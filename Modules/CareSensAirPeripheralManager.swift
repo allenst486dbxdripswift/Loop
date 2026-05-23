@@ -19,8 +19,10 @@ final class CareSensAirPeripheralManager: NSObject {
     private var authAppIDCheckChar: CBCharacteristic?
     private var dataStreamNotifyChar: CBCharacteristic?
 
-    // Default serial number for testing
-    private var serialNumber = "C1QBT5A01157"
+    // Serial number: fixed prefix "C1QBT5A0" + last 4 digits from BLE device name
+    // e.g. BLE name "CSAir 1157" -> serialNumber = "C1QBT5A01157"
+    private let serialNumberPrefix = "C1QBT5A0"
+    private var serialNumber = "C1QBT5A01157" // fallback default
 
     override init() {
         super.init()
@@ -33,22 +35,33 @@ final class CareSensAirPeripheralManager: NSObject {
         central.scanForPeripherals(withServices: [cgmServiceUUID, commandServiceUUID], options: nil)
     }
 
+    /// Extracts the last 4-digit suffix from BLE device name.
+    /// Expected formats: "CSAir 1157", "CareSens Air-1157", "CSAIR_1157", etc.
+    private func extractSuffix4(from peripheralName: String) -> String? {
+        // Find the last sequence of exactly 4 digits in the name
+        let digits = peripheralName.unicodeScalars.filter { CharacterSet.decimalDigits.contains($0) }
+        let digitString = String(digits)
+        guard digitString.count >= 4 else { return nil }
+        return String(digitString.suffix(4))
+    }
+
     private func performHandshake() {
         guard let commandWriteChar = commandWriteChar, let authAppIDCheckChar = authAppIDCheckChar else {
             os_log("Characteristics missing for handshake.", log: self.log, type: .error)
             return
         }
 
-        os_log("Starting AES Handshake...", log: self.log, type: .default)
-        
+        os_log("Starting AES Handshake with serialNumber: %{public}@", log: self.log, type: .default, serialNumber)
+
         // 1. AES Handshake (0xC0 0x01 + 16 bytes encrypted serial)
         var serialData = serialNumber.data(using: .utf8)!
         while serialData.count < 16 { serialData.append(0) } // Pad to 16 bytes
-        
+
         if let encryptedSerial = CareSensAirCrypto.encrypt(serialData, serialNumber: serialNumber) {
             var payload1 = Data([0xC0, 0x01])
             payload1.append(encryptedSerial)
             peripheral?.writeValue(payload1, for: commandWriteChar, type: .withResponse)
+            os_log("AES Handshake payload sent.", log: self.log, type: .default)
         } else {
             os_log("Failed to encrypt serial number.", log: self.log, type: .error)
         }
@@ -73,12 +86,12 @@ final class CareSensAirPeripheralManager: NSObject {
 
     private func handleIncoming(_ data: Data) {
         os_log("Incoming data: %{public}@", log: self.log, type: .default, data.map { String(format: "%02x", $0) }.joined())
-        
+
         guard let plain = CareSensAirCrypto.decrypt(data, serialNumber: serialNumber) else {
             os_log("Failed to decrypt incoming data.", log: self.log, type: .error)
             return
         }
-        
+
         if let glucose = PacketParser.parse(plain) {
             os_log("Parsed glucose: %{public}f", log: self.log, type: .default, glucose)
             NotificationCenter.default.post(name: .csAirGlucoseUpdate,
@@ -92,24 +105,41 @@ extension CareSensAirPeripheralManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn { startScanning() }
     }
+
     func centralManager(_ central: CBCentralManager,
                         didDiscover peripheral: CBPeripheral,
                         advertisementData: [String : Any],
                         rssi RSSI: NSNumber) {
-        os_log("Discovered CareSens Air: %{public}@", log: self.log, type: .default, peripheral.name ?? "Unknown")
+        let name = peripheral.name ?? ""
+        os_log("Discovered CareSens Air: %{public}@", log: self.log, type: .default, name)
+
+        // Derive serial number from BLE device name suffix (last 4 digits)
+        // e.g. "CSAir 1157" -> suffix4 = "1157" -> serialNumber = "C1QBT5A01157"
+        if let suffix4 = extractSuffix4(from: name) {
+            serialNumber = serialNumberPrefix + suffix4
+            os_log("Derived serialNumber: %{public}@ from BLE name: %{public}@",
+                   log: self.log, type: .default, serialNumber, name)
+        } else {
+            os_log("Could not extract 4-digit suffix from BLE name '%{public}@', using fallback: %{public}@",
+                   log: self.log, type: .fault, name, serialNumber)
+        }
+
         self.peripheral = peripheral
         peripheral.delegate = self
         central.stopScan()
         central.connect(peripheral, options: nil)
     }
+
     func centralManager(_ central: CBCentralManager,
                         didConnect peripheral: CBPeripheral) {
         os_log("Connected to CareSens Air.", log: self.log, type: .default)
         peripheral.discoverServices([cgmServiceUUID, commandServiceUUID])
     }
+
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
         os_log("Failed to connect: %{public}@", log: self.log, type: .error, error?.localizedDescription ?? "Unknown")
     }
+
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         os_log("Disconnected: %{public}@", log: self.log, type: .error, error?.localizedDescription ?? "Unknown")
         startScanning()
@@ -128,6 +158,7 @@ extension CareSensAirPeripheralManager: CBPeripheralDelegate {
             }
         }
     }
+
     func peripheral(_ peripheral: CBPeripheral,
                     didDiscoverCharacteristicsFor service: CBService,
                     error: Error?) {
@@ -144,6 +175,7 @@ extension CareSensAirPeripheralManager: CBPeripheralDelegate {
             }
         }
     }
+
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         if let error = error {
             os_log("Update notification state error: %{public}@", log: self.log, type: .error, error.localizedDescription)
@@ -154,6 +186,7 @@ extension CareSensAirPeripheralManager: CBPeripheralDelegate {
             performHandshake()
         }
     }
+
     func peripheral(_ peripheral: CBPeripheral,
                     didUpdateValueFor characteristic: CBCharacteristic,
                     error: Error?) {
