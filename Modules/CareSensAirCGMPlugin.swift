@@ -376,11 +376,24 @@ public final class CareSensAirSetupViewController: UIViewController, CGMManagerO
         let manager = CareSensAirCGMPlugin(serial: serial, pin: pin)
         cgmManagerOnboardingDelegate?.cgmManagerOnboarding(didCreateCGMManager: manager)
         cgmManagerOnboardingDelegate?.cgmManagerOnboarding(didOnboardCGMManager: manager)
-        completionDelegate?.completionNotifyingDidComplete(self)
+        complete()
     }
 
     @objc private func cancel() {
+        complete()
+    }
+
+    /// Notifies Loop and removes this screen. Loop pushes the setup VC onto the
+    /// root navigation controller, so we must pop; if it was presented modally
+    /// instead, we dismiss. (Loop's own completion handler only dismisses, which
+    /// is a no-op for a pushed VC — hence the buttons appeared to do nothing.)
+    private func complete() {
         completionDelegate?.completionNotifyingDidComplete(self)
+        if let nav = navigationController, nav.viewControllers.first !== self {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
 }
 
@@ -526,13 +539,23 @@ public final class CareSensAirSettingsViewController: UIViewController, CGMManag
         alert.addAction(UIAlertAction(title: "Delete CGM", style: .destructive) { [weak self] _ in
             guard let self = self else { return }
             self.manager.requestDeletion()
-            self.completionDelegate?.completionNotifyingDidComplete(self)
+            self.complete()
         })
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         present(alert, animated: true)
     }
 
     @objc private func done() {
+        complete()
+    }
+
+    /// Pops (pushed) or dismisses (modal) this screen after notifying Loop.
+    private func complete() {
         completionDelegate?.completionNotifyingDidComplete(self)
+        if let nav = navigationController, nav.viewControllers.first !== self {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
 }
