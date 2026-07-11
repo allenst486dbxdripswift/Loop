@@ -35,6 +35,18 @@ enum CareSensAirProtocol {
     /// Advertised transmitter local-name prefix: "CSair <last4-of-serial>".
     static let transmitterNamePrefix = "CSair "
 
+    /// Fixed first 8 characters of every sensor serial; only the last 4 digits
+    /// vary per device and they equal the digits in the Bluetooth name ("CSair 1157").
+    static let serialPrefix = "C1QBT5A0"
+
+    /// Builds the full 12-char serial from the 4 digits shown in the Bluetooth
+    /// device name. Returns nil unless `last4` is exactly 4 digits.
+    static func serial(fromLast4 last4: String) -> String? {
+        let digits = last4.trimmingCharacters(in: .whitespaces)
+        guard digits.count == 4, digits.allSatisfy({ $0.isNumber }) else { return nil }
+        return serialPrefix + digits
+    }
+
     // MARK: - Fixed credentials (from decompiled app)
 
     /// AES-256 key passed to `ConnectSensor`. 32 bytes → AES-256 (not AES-128).

@@ -106,9 +106,10 @@ extension CareSensAirPeripheralManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
-        // Match the specific transmitter by advertised local name.
+        // Match the specific transmitter by advertised local name. Compare
+        // case-insensitively so the "CSair"/"CSAir" spelling variants both match.
         let advName = (advertisementData[CBAdvertisementDataLocalNameKey] as? String) ?? peripheral.name ?? ""
-        guard advName == expectedLocalName else { return }
+        guard advName.caseInsensitiveCompare(expectedLocalName) == .orderedSame else { return }
 
         central.stopScan()
         self.peripheral = peripheral
