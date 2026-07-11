@@ -74,7 +74,7 @@ enum CareSensAirProtocol {
                                 keyPtr.baseAddress, key.count,
                                 ivPtr.baseAddress,
                                 inPtr.baseAddress, plaintext.count,
-                                outPtr.baseAddress, out.count,
+                                outPtr.baseAddress, outPtr.count,
                                 &moved)
                     }
                 }
