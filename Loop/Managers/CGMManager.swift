@@ -15,14 +15,14 @@ let staticCGMManagersByIdentifier: [String: CGMManager.Type] = [
 ]
 
 var availableStaticCGMManagers: [CGMManagerDescriptor] {
+        // CareSens Air is always selectable; the Mock CGM only in simulator builds.
+        var managers = [
+            CGMManagerDescriptor(identifier: CareSensAirCGMPlugin.pluginIdentifier, localizedTitle: CareSensAirCGMPlugin.localizedTitle)
+        ]
         if FeatureFlags.allowSimulators {
-            return [
-                CGMManagerDescriptor(identifier: MockCGMManager.pluginIdentifier, localizedTitle: MockCGMManager.localizedTitle),
-                CGMManagerDescriptor(identifier: CareSensAirCGMPlugin.pluginIdentifier, localizedTitle: CareSensAirCGMPlugin.localizedTitle)
-            ]
-        } else {
-            return []
+            managers.insert(CGMManagerDescriptor(identifier: MockCGMManager.pluginIdentifier, localizedTitle: MockCGMManager.localizedTitle), at: 0)
         }
+        return managers
 }
 
 func CGMManagerFromRawValue(_ rawValue: [String: Any]) -> CGMManager? {

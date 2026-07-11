@@ -1,13 +1,21 @@
+//
+//  PacketParser.swift
+//  Loop
+//
+//  Thin wrapper over the verified CareSens Air packet parsing in `CareSensAirProtocol`.
+//  Kept as a named entry point; the real framing/decoding lives in CareSensAirProtocol.
+//
+
 import Foundation
 
-/// Parses raw data packets from the CGM (header 0xAA55, length 20 bytes)
-struct PacketParser {
-    static func parse(_ data: Data) -> Double? {
-        guard data.count >= 20 else { return nil }
-        let header = data.prefix(2)
-        guard header[0] == 0xAA && header[1] == 0x55 else { return nil }
-        let adcBytes = data.subdata(in: 4..<8)
-        let adc = adcBytes.withUnsafeBytes { $0.load(as: UInt32.self) }.littleEndian
-        return GlucoseConverter.convert(adc: Double(adc))
+enum PacketParser {
+    /// Parses a `0xC5 0x01` glucose report packet, returning the current glucose (mg/dL).
+    static func currentGlucose(from data: Data, valueCount: Int = 1) -> Int? {
+        CareSensAirProtocol.parseGlucosePacket(data, valueCount: valueCount)?.currentGlucose
+    }
+
+    /// Parses a `0xC4 0x01` packet, returning the number of stored records.
+    static func recordCount(from data: Data) -> Int? {
+        CareSensAirProtocol.parseRecordCount(data)
     }
 }
